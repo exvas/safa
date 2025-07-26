@@ -1,0 +1,11 @@
+/* Make Customer Outstanding label red and bold */
+[data-fieldname="custom_customer_outstanding"] .control-label {
+    color: #dc3545 !important;
+    font-weight: bold !important;
+}
+
+/* Alternative selector if the above doesn't work */
+.frappe-control[data-fieldname="custom_customer_outstanding"] label {
+    color: #dc3545 !important;
+    font-weight: bold !important;
+}
