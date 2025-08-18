@@ -14,7 +14,6 @@ app_license = "MIT"
 # Document Events
 doc_events = {
     "Sales Invoice": {
-        "after_insert": "safa.sales_invoice.after_insert_sales_invoice",
         "on_submit": "safa.sales_invoice.on_submit_sales_invoice",
     }
 }

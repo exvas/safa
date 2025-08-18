@@ -40,12 +40,16 @@ frappe.ui.form.on('Sales Invoice', {
     // Trigger on form refresh
     refresh: function(frm) {
         console.log("Form refreshed");
-        // Make custom_payment_type field mandatory
-        frm.toggle_reqd('custom_payment_type', true);
-        set_pos_based_on_payment_type(frm);
-        manage_sales_team(frm);
         
-        // Style the Customer Outstanding label to be red and bold
+        // Only run these functions if the document is not submitted (not read-only)
+        if (frm.doc.docstatus === 0) {
+            // Make custom_payment_type field mandatory
+            frm.toggle_reqd('custom_payment_type', true);
+            set_pos_based_on_payment_type(frm);
+            manage_sales_team(frm);
+        }
+        
+        // Style the Customer Outstanding label to be red and bold (always do this)
         setTimeout(() => {
             $('[data-fieldname="custom_customer_outstanding"] .control-label').css({
                 'color': '#dc3545',
@@ -53,7 +57,7 @@ frappe.ui.form.on('Sales Invoice', {
             });
         }, 500);
         
-        // Fetch customer data if customer is selected
+        // Fetch customer data if customer is selected (always do this for display)
         if (frm.doc.customer) {
             fetch_customer_outstanding(frm);
             fetch_items_last_rates(frm);
@@ -84,6 +88,11 @@ frappe.ui.form.on('Sales Invoice Item', {
 
 // Helper function to set POS based on payment type
 function set_pos_based_on_payment_type(frm) {
+    // Don't modify if document is submitted
+    if (frm.doc.docstatus !== 0) {
+        return;
+    }
+    
     let payment_value = frm.doc.custom_payment_type;
     
     console.log("Current custom_payment_type value:", payment_value);
@@ -102,6 +111,11 @@ function set_pos_based_on_payment_type(frm) {
 
 // Helper function to manage sales team based on custom salesman
 function manage_sales_team(frm) {
+    // Don't modify if document is submitted
+    if (frm.doc.docstatus !== 0) {
+        return;
+    }
+    
     if (!frm.doc.custom_salesman) {
         console.log("No custom salesman selected");
         return;

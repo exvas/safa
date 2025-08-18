@@ -86,21 +86,11 @@ def update_custom_fields_background(doc_name):
         
         frappe.db.commit()
         
+        # Don't refresh the document to avoid triggering form updates
+        frappe.clear_cache(doctype="Sales Invoice", name=doc_name)
+        
     except Exception as e:
         frappe.log_error(f"Error in update_custom_fields_background: {str(e)}")
-
-def after_insert_sales_invoice(doc, method=None):
-    """Called after Sales Invoice is inserted"""
-    try:
-        # Run in background to avoid blocking
-        frappe.enqueue(
-            update_custom_fields_background,
-            queue='short',
-            timeout=60,
-            doc_name=doc.name
-        )
-    except Exception as e:
-        frappe.log_error(f"Error in after_insert_sales_invoice: {str(e)}")
 
 def on_submit_sales_invoice(doc, method=None):
     """Called when Sales Invoice is submitted"""
