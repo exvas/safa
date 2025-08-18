@@ -47,45 +47,53 @@ frappe.ui.form.on('Sales Invoice', {
         // Debug logging for payment button (reduced)
         console.log("Form refreshed - Doc Status:", frm.doc.docstatus, "Outstanding:", frm.doc.outstanding_amount, "Status:", frm.doc.status);
         
-        // Add Quick Payment button - proper conditions only
+        // Add Quick Payment button - show for any submitted invoice for testing
         let show_payment_button = false;
         
         if (frm.doc.docstatus === 1) {
-            // Only show if there's actual outstanding amount
-            if (frm.doc.outstanding_amount > 0 && 
-                (frm.doc.status === 'Unpaid' || 
-                 frm.doc.status === 'Overdue' || 
-                 frm.doc.status === 'Partly Paid')) {
-                show_payment_button = true;
-            }
+            // Show for any submitted invoice (for testing - can be made stricter later)
+            show_payment_button = true;
         }
+        
+        console.log("Show Payment Button:", show_payment_button);
         
         if (show_payment_button) {
             try {
                 // Add to Create dropdown
                 frm.add_custom_button(__('Quick Payment'), function() {
+                    console.log("Quick Payment clicked");
                     show_quick_payment_dialog(frm);
                 }, __('Create'));
                 
                 // Add prominent button in main toolbar
                 frm.add_custom_button(__('💳 Quick Payment'), function() {
+                    console.log("Quick Payment toolbar clicked");
                     show_quick_payment_dialog(frm);
                 }).addClass('btn-success');
                 
+                console.log("Quick Payment buttons added successfully");
             } catch(error) {
                 console.error("Error adding Quick Payment buttons:", error);
             }
         }
         
         // Always show Quick Collection button (independent of invoice)
-        frm.add_custom_button(__('Quick Collection'), function() {
-            show_quick_collection_dialog(frm);
-        }, __('Create'));
-        
-        // Add prominent Quick Collection button in main toolbar
-        frm.add_custom_button(__('💰 Quick Collection'), function() {
-            show_quick_collection_dialog(frm);
-        }).addClass('btn-info');
+        try {
+            frm.add_custom_button(__('Quick Collection'), function() {
+                console.log("Quick Collection dropdown clicked");
+                show_quick_collection_dialog(frm);
+            }, __('Create'));
+            
+            // Add prominent Quick Collection button in main toolbar
+            frm.add_custom_button(__('💰 Quick Collection'), function() {
+                console.log("Quick Collection toolbar clicked");
+                show_quick_collection_dialog(frm);
+            }).addClass('btn-info');
+            
+            console.log("Quick Collection buttons added successfully");
+        } catch(error) {
+            console.error("Error adding Quick Collection buttons:", error);
+        }
         
         // Style the Customer Outstanding label to be red and bold (always do this)
         setTimeout(() => {
