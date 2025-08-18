@@ -1,22 +1,4 @@
 frappe.ui.form.on('Sales Invoice', {
-	refresh: function(frm) {
-		frm.toggle_display("loyalty_points_redemption", false);
-		frm.toggle_display("total_qty", false);
-	    frm.toggle_display("tax_category", false);
-	    frm.toggle_display("tax_category", false);
-	    frm.toggle_display("shipping_rule", false);
-	    frm.toggle_display("incoterm", false);
-	    frm.toggle_display("named_place", false);
-	    frm.toggle_display("scan_barcode", false);
-	    frm.toggle_display("time_sheet_list", false);
-	    frm.toggle_display("subscription_section", false);
-	    frm.toggle_display("taxes_and_charges", false);
-	    frm.toggle_display("taxes", false);
-	    
-	}
-});
-
-frappe.ui.form.on('Sales Invoice', {
     // Trigger when custom_payment_type field changes
     custom_payment_type: function(frm) {
         console.log("Custom payment type changed to:", frm.doc.custom_payment_type);
@@ -37,9 +19,22 @@ frappe.ui.form.on('Sales Invoice', {
         }
     },
     
-    // Trigger on form refresh
+    // Trigger on form refresh - CONSOLIDATED REFRESH FUNCTION
     refresh: function(frm) {
         console.log("Form refreshed");
+        
+        // Always hide these fields
+        frm.toggle_display("loyalty_points_redemption", false);
+        frm.toggle_display("total_qty", false);
+        frm.toggle_display("tax_category", false);
+        frm.toggle_display("shipping_rule", false);
+        frm.toggle_display("incoterm", false);
+        frm.toggle_display("named_place", false);
+        frm.toggle_display("scan_barcode", false);
+        frm.toggle_display("time_sheet_list", false);
+        frm.toggle_display("subscription_section", false);
+        frm.toggle_display("taxes_and_charges", false);
+        frm.toggle_display("taxes", false);
         
         // Only run these functions if the document is not submitted (not read-only)
         if (frm.doc.docstatus === 0) {
@@ -49,6 +44,49 @@ frappe.ui.form.on('Sales Invoice', {
             manage_sales_team(frm);
         }
         
+        // Debug logging for payment button (reduced)
+        console.log("Form refreshed - Doc Status:", frm.doc.docstatus, "Outstanding:", frm.doc.outstanding_amount, "Status:", frm.doc.status);
+        
+        // Add Quick Payment button - proper conditions only
+        let show_payment_button = false;
+        
+        if (frm.doc.docstatus === 1) {
+            // Only show if there's actual outstanding amount
+            if (frm.doc.outstanding_amount > 0 && 
+                (frm.doc.status === 'Unpaid' || 
+                 frm.doc.status === 'Overdue' || 
+                 frm.doc.status === 'Partly Paid')) {
+                show_payment_button = true;
+            }
+        }
+        
+        if (show_payment_button) {
+            try {
+                // Add to Create dropdown
+                frm.add_custom_button(__('Quick Payment'), function() {
+                    show_quick_payment_dialog(frm);
+                }, __('Create'));
+                
+                // Add prominent button in main toolbar
+                frm.add_custom_button(__('💳 Quick Payment'), function() {
+                    show_quick_payment_dialog(frm);
+                }).addClass('btn-success');
+                
+            } catch(error) {
+                console.error("Error adding Quick Payment buttons:", error);
+            }
+        }
+        
+        // Always show Quick Collection button (independent of invoice)
+        frm.add_custom_button(__('Quick Collection'), function() {
+            show_quick_collection_dialog(frm);
+        }, __('Create'));
+        
+        // Add prominent Quick Collection button in main toolbar
+        frm.add_custom_button(__('💰 Quick Collection'), function() {
+            show_quick_collection_dialog(frm);
+        }).addClass('btn-info');
+        
         // Style the Customer Outstanding label to be red and bold (always do this)
         setTimeout(() => {
             $('[data-fieldname="custom_customer_outstanding"] .control-label').css({
@@ -57,8 +95,8 @@ frappe.ui.form.on('Sales Invoice', {
             });
         }, 500);
         
-        // Fetch customer data if customer is selected (always do this for display)
-        if (frm.doc.customer) {
+        // Fetch customer data ONLY for draft invoices to avoid triggering updates
+        if (frm.doc.customer && frm.doc.docstatus === 0) {
             fetch_customer_outstanding(frm);
             fetch_items_last_rates(frm);
         }
@@ -236,4 +274,447 @@ function fetch_item_last_rate(frm, item_code, row_name) {
             }
         });
     });
+}
+
+// Function to show mobile-compatible quick payment dialog
+function show_quick_payment_dialog(frm) {
+    console.log("Opening Quick Payment Dialog - Outstanding:", frm.doc.outstanding_amount);
+    
+    // Calculate outstanding amount - use grand total if outstanding is not set
+    let outstanding_amount = frm.doc.outstanding_amount || frm.doc.grand_total || 0;
+    
+    if (outstanding_amount <= 0) {
+        frappe.msgprint(__('No outstanding amount to pay'));
+        return;
+    }
+    
+    try {
+        let dialog = new frappe.ui.Dialog({
+            title: __('Quick Payment Entry'),
+            size: 'small', // Makes it mobile-friendly
+            fields: [
+                {
+                    fieldtype: 'Currency',
+                    fieldname: 'outstanding_amount',
+                    label: __('Outstanding Amount'),
+                    default: outstanding_amount,
+                    read_only: 1,
+                    bold: 1
+                },
+                {
+                    fieldtype: 'Column Break'
+                },
+                {
+                    fieldtype: 'Currency',
+                    fieldname: 'paid_amount',
+                    label: __('Paid Amount'),
+                    reqd: 1,
+                    default: outstanding_amount,
+                    onchange: function() {
+                        let paid_amount = dialog.get_value('paid_amount');
+                        if (paid_amount > outstanding_amount) {
+                            frappe.msgprint(__('Paid amount cannot exceed outstanding amount of {0}', [format_currency(outstanding_amount)]));
+                            dialog.set_value('paid_amount', outstanding_amount);
+                        }
+                        if (paid_amount <= 0) {
+                            frappe.msgprint(__('Paid amount must be greater than zero'));
+                            dialog.set_value('paid_amount', outstanding_amount);
+                        }
+                    }
+                },
+            {
+                fieldtype: 'Section Break'
+            },
+            {
+                fieldtype: 'Link',
+                fieldname: 'mode_of_payment',
+                label: __('Mode of Payment'),
+                options: 'Mode of Payment',
+                reqd: 1,
+                onchange: function() {
+                    let mode_of_payment = dialog.get_value('mode_of_payment');
+                    // Show/hide and make required reference fields based on payment mode
+                    if (mode_of_payment && 
+                        ['Cheque', 'Bank Draft', 'Wire Transfer', 'Bank Transfer', 'NEFT', 'RTGS'].includes(mode_of_payment)) {
+                        dialog.fields_dict.reference_no.df.hidden = 0;
+                        dialog.fields_dict.reference_no.df.reqd = 1;
+                        dialog.fields_dict.reference_date.df.hidden = 0;
+                        dialog.fields_dict.reference_date.df.reqd = 1;
+                        dialog.refresh();
+                    } else {
+                        dialog.fields_dict.reference_no.df.hidden = 1;
+                        dialog.fields_dict.reference_no.df.reqd = 0;
+                        dialog.fields_dict.reference_date.df.hidden = 1;
+                        dialog.fields_dict.reference_date.df.reqd = 0;
+                        dialog.refresh();
+                    }
+                }
+            },
+            {
+                fieldtype: 'Column Break'
+            },
+            {
+                fieldtype: 'Date',
+                fieldname: 'posting_date',
+                label: __('Posting Date'),
+                default: frappe.datetime.get_today(),
+                reqd: 1
+            },
+            {
+                fieldtype: 'Section Break'
+            },
+            {
+                fieldtype: 'Data',
+                fieldname: 'reference_no',
+                label: __('Cheque/Reference No'),
+                hidden: 1
+            },
+            {
+                fieldtype: 'Column Break'
+            },
+            {
+                fieldtype: 'Date',
+                fieldname: 'reference_date',
+                label: __('Cheque/Reference Date'),
+                hidden: 1,
+                default: frappe.datetime.get_today()
+            },
+            {
+                fieldtype: 'Section Break'
+            },
+            {
+                fieldtype: 'Small Text',
+                fieldname: 'remarks',
+                label: __('Remarks'),
+                default: `Payment against ${frm.doc.name}`
+            }
+        ],
+        primary_action_label: __('Create Payment'),
+        primary_action: function() {
+            let values = dialog.get_values();
+            
+            if (!values) {
+                return;
+            }
+            
+            // Validation
+            if (values.paid_amount <= 0) {
+                frappe.msgprint(__('Paid amount must be greater than zero'));
+                return;
+            }
+            
+            if (values.paid_amount > outstanding_amount) {
+                frappe.msgprint(__('Paid amount cannot exceed outstanding amount of {0}', [format_currency(outstanding_amount)]));
+                return;
+            }
+            
+            // Check if reference fields are required and provided
+            if (values.mode_of_payment && 
+                ['Cheque', 'Bank Draft', 'Wire Transfer', 'Bank Transfer', 'NEFT', 'RTGS'].includes(values.mode_of_payment)) {
+                if (!values.reference_no || values.reference_no.trim() === '') {
+                    frappe.msgprint(__('Reference No is mandatory for {0}', [values.mode_of_payment]));
+                    return;
+                }
+                if (!values.reference_date) {
+                    frappe.msgprint(__('Reference Date is mandatory for {0}', [values.mode_of_payment]));
+                    return;
+                }
+            }
+            
+            // Create payment entry
+            frappe.call({
+                method: 'safa.sales_invoice.create_quick_payment_entry',
+                args: {
+                    sales_invoice: frm.doc.name,
+                    mode_of_payment: values.mode_of_payment,
+                    paid_amount: values.paid_amount,
+                    posting_date: values.posting_date,
+                    reference_no: values.reference_no,
+                    reference_date: values.reference_date,
+                    remarks: values.remarks
+                },
+                freeze: true,
+                freeze_message: __('Creating Payment Entry...'),
+                callback: function(response) {
+                    if (response.message) {
+                        frappe.msgprint({
+                            title: __('Success'),
+                            message: __('Payment Entry {0} created successfully', [`<a href="#Form/Payment Entry/${response.message}">${response.message}</a>`]),
+                            indicator: 'green'
+                        });
+                        dialog.hide();
+                        frm.reload_doc(); // Refresh the form to show updated outstanding amount
+                    }
+                },
+                error: function(error) {
+                    frappe.msgprint({
+                        title: __('Error'),
+                        message: __('Failed to create payment entry. Please try again.'),
+                        indicator: 'red'
+                    });
+                }
+            });
+        }
+    });
+    
+    dialog.show();
+    
+    // Make dialog mobile-friendly and apply CSS class
+    setTimeout(() => {
+        $('.modal-dialog').addClass('quick-payment-dialog');
+        $('.modal-body').css('max-height', '80vh').css('overflow-y', 'auto');
+    }, 100);
+    
+    } catch(error) {
+        console.error("Error creating Quick Payment dialog:", error);
+        frappe.msgprint({
+            title: __('Error'),
+            message: __('Failed to open payment dialog. Please try again.'),
+            indicator: 'red'
+        });
+    }
+}
+
+// Function to show mobile-compatible quick collection dialog
+function show_quick_collection_dialog(frm) {
+    console.log("Opening Quick Collection Dialog");
+    
+    try {
+        let dialog = new frappe.ui.Dialog({
+            title: __('💰 Quick Collection'),
+            size: 'small',
+            fields: [
+                {
+                    fieldtype: 'Link',
+                    fieldname: 'customer',
+                    label: __('Customer'),
+                    options: 'Customer',
+                    reqd: 1,
+                    default: frm.doc.customer || '',
+                    onchange: function() {
+                        let customer = dialog.get_value('customer');
+                        if (customer) {
+                            console.log("Fetching outstanding for customer:", customer);
+                            // Add a timeout to prevent hanging
+                            setTimeout(() => {
+                                frappe.call({
+                                    method: 'safa.sales_invoice.get_customer_outstanding',
+                                    args: {
+                                        customer: customer,
+                                        company: frm.doc.company || frappe.defaults.get_default('Company')
+                                    },
+                                    timeout: 10, // 10 second timeout
+                                    callback: function(response) {
+                                        console.log("Outstanding response:", response);
+                                        if (response && response.message) {
+                                            let outstanding = response.message.outstanding_amount || 0;
+                                            console.log("Setting outstanding to:", outstanding);
+                                            dialog.set_value('customer_outstanding', outstanding);
+                                        } else {
+                                            console.log("No outstanding data, setting to 0");
+                                            dialog.set_value('customer_outstanding', 0);
+                                        }
+                                    },
+                                    error: function(error) {
+                                        console.error("Error fetching customer outstanding:", error);
+                                        dialog.set_value('customer_outstanding', 0);
+                                        frappe.msgprint(__('Could not fetch customer outstanding. Please try again.'));
+                                    }
+                                });
+                            }, 100); // Small delay to prevent rapid calls
+                        } else {
+                            dialog.set_value('customer_outstanding', 0);
+                        }
+                    }
+                },
+                {
+                    fieldtype: 'Column Break'
+                },
+                {
+                    fieldtype: 'Currency',
+                    fieldname: 'customer_outstanding',
+                    label: __('Customer Outstanding'),
+                    read_only: 1,
+                    bold: 1,
+                    default: 0
+                },
+                {
+                    fieldtype: 'Section Break'
+                },
+                {
+                    fieldtype: 'Currency',
+                    fieldname: 'collection_amount',
+                    label: __('Collection Amount'),
+                    reqd: 1,
+                    default: 0,
+                    description: 'Enter the amount to collect from customer'
+                },
+                {
+                    fieldtype: 'Column Break'
+                },
+                {
+                    fieldtype: 'Link',
+                    fieldname: 'mode_of_payment',
+                    label: __('Mode of Payment'),
+                    options: 'Mode of Payment',
+                    reqd: 1,
+                    onchange: function() {
+                        let mode_of_payment = dialog.get_value('mode_of_payment');
+                        // Show/hide and make required reference fields based on payment mode
+                        if (mode_of_payment && 
+                            ['Cheque', 'Bank Draft', 'Wire Transfer', 'Bank Transfer', 'NEFT', 'RTGS'].includes(mode_of_payment)) {
+                            dialog.fields_dict.reference_no.df.hidden = 0;
+                            dialog.fields_dict.reference_no.df.reqd = 1;
+                            dialog.fields_dict.reference_date.df.hidden = 0;
+                            dialog.fields_dict.reference_date.df.reqd = 1;
+                            dialog.refresh();
+                        } else {
+                            dialog.fields_dict.reference_no.df.hidden = 1;
+                            dialog.fields_dict.reference_no.df.reqd = 0;
+                            dialog.fields_dict.reference_date.df.hidden = 1;
+                            dialog.fields_dict.reference_date.df.reqd = 0;
+                            dialog.refresh();
+                        }
+                    }
+                },
+                {
+                    fieldtype: 'Section Break'
+                },
+                {
+                    fieldtype: 'Date',
+                    fieldname: 'posting_date',
+                    label: __('Posting Date'),
+                    default: frappe.datetime.get_today(),
+                    reqd: 1
+                },
+                {
+                    fieldtype: 'Column Break'
+                },
+                {
+                    fieldtype: 'Link',
+                    fieldname: 'company',
+                    label: __('Company'),
+                    options: 'Company',
+                    default: frm.doc.company || frappe.defaults.get_default('Company'),
+                    reqd: 1
+                },
+                {
+                    fieldtype: 'Section Break'
+                },
+                {
+                    fieldtype: 'Data',
+                    fieldname: 'reference_no',
+                    label: __('Cheque/Reference No'),
+                    hidden: 1
+                },
+                {
+                    fieldtype: 'Column Break'
+                },
+                {
+                    fieldtype: 'Date',
+                    fieldname: 'reference_date',
+                    label: __('Cheque/Reference Date'),
+                    hidden: 1,
+                    default: frappe.datetime.get_today()
+                },
+                {
+                    fieldtype: 'Section Break'
+                },
+                {
+                    fieldtype: 'Small Text',
+                    fieldname: 'remarks',
+                    label: __('Remarks'),
+                    default: 'Quick Collection Payment'
+                }
+            ],
+            primary_action_label: __('Create Collection'),
+            primary_action: function() {
+                let values = dialog.get_values();
+                
+                if (!values) {
+                    return;
+                }
+                
+                // Validation
+                if (!values.customer) {
+                    frappe.msgprint(__('Please select a customer'));
+                    return;
+                }
+                
+                if (values.collection_amount <= 0) {
+                    frappe.msgprint(__('Collection amount must be greater than zero'));
+                    return;
+                }
+                
+                if (!values.mode_of_payment) {
+                    frappe.msgprint(__('Please select mode of payment'));
+                    return;
+                }
+                
+                // Check if reference fields are required and provided
+                if (values.mode_of_payment && 
+                    ['Cheque', 'Bank Draft', 'Wire Transfer', 'Bank Transfer', 'NEFT', 'RTGS'].includes(values.mode_of_payment)) {
+                    if (!values.reference_no || values.reference_no.trim() === '') {
+                        frappe.msgprint(__('Reference No is mandatory for {0}', [values.mode_of_payment]));
+                        return;
+                    }
+                    if (!values.reference_date) {
+                        frappe.msgprint(__('Reference Date is mandatory for {0}', [values.mode_of_payment]));
+                        return;
+                    }
+                }
+                
+                // Create payment entry
+                frappe.call({
+                    method: 'safa.sales_invoice.create_quick_collection_entry',
+                    args: {
+                        customer: values.customer,
+                        company: values.company,
+                        collection_amount: values.collection_amount,
+                        mode_of_payment: values.mode_of_payment,
+                        posting_date: values.posting_date,
+                        reference_no: values.reference_no,
+                        reference_date: values.reference_date,
+                        remarks: values.remarks
+                    },
+                    freeze: true,
+                    freeze_message: __('Creating Collection Entry...'),
+                    callback: function(response) {
+                        if (response.message) {
+                            frappe.msgprint({
+                                title: __('Success'),
+                                message: __('Payment Entry {0} created successfully', [`<a href="#Form/Payment Entry/${response.message}">${response.message}</a>`]),
+                                indicator: 'green'
+                            });
+                            dialog.hide();
+                            frm.reload_doc(); // Refresh the form
+                        }
+                    },
+                    error: function(error) {
+                        frappe.msgprint({
+                            title: __('Error'),
+                            message: __('Failed to create collection entry. Please try again.'),
+                            indicator: 'red'
+                        });
+                    }
+                });
+            }
+        });
+        
+        dialog.show();
+        
+        // Make dialog mobile-friendly and apply CSS class
+        setTimeout(() => {
+            $('.modal-dialog').addClass('quick-collection-dialog');
+            $('.modal-body').css('max-height', '80vh').css('overflow-y', 'auto');
+        }, 100);
+        
+    } catch(error) {
+        console.error("Error creating Quick Collection dialog:", error);
+        frappe.msgprint({
+            title: __('Error'),
+            message: __('Failed to open collection dialog. Please try again.'),
+            indicator: 'red'
+        });
+    }
 }

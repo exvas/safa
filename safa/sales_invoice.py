@@ -168,3 +168,140 @@ def get_item_price_history(customer, item_code, company, limit=5):
     except Exception as e:
         frappe.log_error(f"Error in get_item_price_history: {str(e)}")
         return []
+
+@frappe.whitelist()
+def create_quick_payment_entry(sales_invoice, mode_of_payment, paid_amount, posting_date, reference_no=None, reference_date=None, remarks=None):
+    """Create a Payment Entry against Sales Invoice"""
+    try:
+        # Get Sales Invoice document
+        si_doc = frappe.get_doc("Sales Invoice", sales_invoice)
+        
+        if si_doc.docstatus != 1:
+            frappe.throw(_("Sales Invoice must be submitted to create payment entry"))
+        
+        if si_doc.outstanding_amount <= 0:
+            frappe.throw(_("Sales Invoice has no outstanding amount"))
+        
+        paid_amount = float(paid_amount)
+        if paid_amount > si_doc.outstanding_amount:
+            frappe.throw(_("Paid amount cannot exceed outstanding amount"))
+        
+        # Get Mode of Payment details
+        mop_doc = frappe.get_doc("Mode of Payment", mode_of_payment)
+        if not mop_doc.accounts:
+            frappe.throw(_("Mode of Payment {0} has no associated accounts").format(mode_of_payment))
+        
+        # Find account for the company
+        payment_account = None
+        for account in mop_doc.accounts:
+            if account.company == si_doc.company:
+                payment_account = account.default_account
+                break
+        
+        if not payment_account:
+            frappe.throw(_("No account found for Mode of Payment {0} in company {1}").format(mode_of_payment, si_doc.company))
+        
+        # Create Payment Entry
+        payment_entry = frappe.new_doc("Payment Entry")
+        payment_entry.payment_type = "Receive"
+        payment_entry.party_type = "Customer"
+        payment_entry.party = si_doc.customer
+        payment_entry.company = si_doc.company
+        payment_entry.posting_date = posting_date
+        payment_entry.paid_amount = paid_amount
+        payment_entry.received_amount = paid_amount
+        payment_entry.mode_of_payment = mode_of_payment
+        payment_entry.paid_from = si_doc.debit_to
+        payment_entry.paid_to = payment_account
+        payment_entry.reference_no = reference_no
+        payment_entry.reference_date = reference_date
+        payment_entry.remarks = remarks or f"Payment against {sales_invoice}"
+        
+        # Add reference to Sales Invoice
+        payment_entry.append("references", {
+            "reference_doctype": "Sales Invoice",
+            "reference_name": sales_invoice,
+            "total_amount": si_doc.grand_total,
+            "outstanding_amount": si_doc.outstanding_amount,
+            "allocated_amount": paid_amount
+        })
+        
+        # Set currency and exchange rate
+        payment_entry.paid_from_account_currency = si_doc.currency
+        payment_entry.paid_to_account_currency = frappe.get_cached_value("Account", payment_account, "account_currency")
+        
+        # Insert and submit
+        payment_entry.insert()
+        payment_entry.submit()
+        
+        return payment_entry.name
+        
+    except Exception as e:
+        frappe.log_error(f"Error in create_quick_payment_entry: {str(e)}")
+        frappe.throw(_("Error creating payment entry: {0}").format(str(e)))
+
+@frappe.whitelist()
+def create_quick_collection_entry(customer, company, collection_amount, mode_of_payment, posting_date, reference_no=None, reference_date=None, remarks=None):
+    """Create a Payment Entry for quick collection without invoice reference"""
+    try:
+        collection_amount = float(collection_amount)
+        if collection_amount <= 0:
+            frappe.throw(_("Collection amount must be greater than zero"))
+        
+        # Get Mode of Payment details
+        mop_doc = frappe.get_doc("Mode of Payment", mode_of_payment)
+        if not mop_doc.accounts:
+            frappe.throw(_("Mode of Payment {0} has no associated accounts").format(mode_of_payment))
+        
+        # Find account for the company
+        payment_account = None
+        for account in mop_doc.accounts:
+            if account.company == company:
+                payment_account = account.default_account
+                break
+        
+        if not payment_account:
+            frappe.throw(_("No account found for Mode of Payment {0} in company {1}").format(mode_of_payment, company))
+        
+        # Get customer's receivable account
+        customer_account = frappe.get_cached_value("Company", company, "default_receivable_account")
+        if not customer_account:
+            # Try to get from customer
+            customer_doc = frappe.get_doc("Customer", customer)
+            for account in customer_doc.accounts:
+                if account.company == company:
+                    customer_account = account.account
+                    break
+        
+        if not customer_account:
+            frappe.throw(_("No receivable account found for customer {0} in company {1}").format(customer, company))
+        
+        # Create Payment Entry
+        payment_entry = frappe.new_doc("Payment Entry")
+        payment_entry.payment_type = "Receive"
+        payment_entry.party_type = "Customer"
+        payment_entry.party = customer
+        payment_entry.company = company
+        payment_entry.posting_date = posting_date
+        payment_entry.paid_amount = collection_amount
+        payment_entry.received_amount = collection_amount
+        payment_entry.mode_of_payment = mode_of_payment
+        payment_entry.paid_from = customer_account
+        payment_entry.paid_to = payment_account
+        payment_entry.reference_no = reference_no
+        payment_entry.reference_date = reference_date
+        payment_entry.remarks = remarks or f"Quick Collection from {customer}"
+        
+        # Set currency and exchange rate
+        payment_entry.paid_from_account_currency = frappe.get_cached_value("Company", company, "default_currency")
+        payment_entry.paid_to_account_currency = frappe.get_cached_value("Account", payment_account, "account_currency")
+        
+        # Insert and submit
+        payment_entry.insert()
+        payment_entry.submit()
+        
+        return payment_entry.name
+        
+    except Exception as e:
+        frappe.log_error(f"Error in create_quick_collection_entry: {str(e)}")
+        frappe.throw(_("Error creating collection entry: {0}").format(str(e)))

@@ -9,3 +9,125 @@
     color: #dc3545 !important;
     font-weight: bold !important;
 }
+
+/* Mobile-friendly Quick Payment Dialog */
+.quick-payment-dialog .modal-dialog {
+    max-width: 90vw !important;
+    margin: 5vh auto !important;
+}
+
+.quick-payment-dialog .modal-body {
+    padding: 15px !important;
+    max-height: 80vh !important;
+    overflow-y: auto !important;
+}
+
+.quick-payment-dialog .form-section {
+    margin-bottom: 15px !important;
+}
+
+.quick-payment-dialog .frappe-control {
+    margin-bottom: 10px !important;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+    .quick-payment-dialog .modal-dialog {
+        max-width: 95vw !important;
+        margin: 2vh auto !important;
+    }
+    
+    .quick-payment-dialog .modal-body {
+        padding: 10px !important;
+        max-height: 85vh !important;
+    }
+    
+    .quick-payment-dialog .btn {
+        padding: 8px 16px !important;
+        font-size: 14px !important;
+    }
+    
+    .quick-payment-dialog .control-label {
+        font-size: 13px !important;
+        font-weight: 500 !important;
+    }
+    
+    .quick-payment-dialog .form-control {
+        font-size: 14px !important;
+        padding: 8px 12px !important;
+    }
+}
+
+/* Highlight outstanding amount */
+.quick-payment-dialog [data-fieldname="outstanding_amount"] {
+    background-color: #f8f9fa !important;
+    border-left: 3px solid #dc3545 !important;
+    padding-left: 10px !important;
+}
+
+/* Style the paid amount field */
+.quick-payment-dialog [data-fieldname="paid_amount"] .form-control {
+    border-color: #28a745 !important;
+    font-weight: bold !important;
+}
+
+/* Mobile-friendly Quick Collection Dialog */
+.quick-collection-dialog .modal-dialog {
+    max-width: 90vw !important;
+    margin: 5vh auto !important;
+}
+
+.quick-collection-dialog .modal-body {
+    padding: 15px !important;
+    max-height: 80vh !important;
+    overflow-y: auto !important;
+}
+
+.quick-collection-dialog .form-section {
+    margin-bottom: 15px !important;
+}
+
+.quick-collection-dialog .frappe-control {
+    margin-bottom: 10px !important;
+}
+
+/* Mobile responsive adjustments for collection dialog */
+@media (max-width: 768px) {
+    .quick-collection-dialog .modal-dialog {
+        max-width: 95vw !important;
+        margin: 2vh auto !important;
+    }
+    
+    .quick-collection-dialog .modal-body {
+        padding: 10px !important;
+        max-height: 85vh !important;
+    }
+    
+    .quick-collection-dialog .btn {
+        padding: 8px 16px !important;
+        font-size: 14px !important;
+    }
+    
+    .quick-collection-dialog .control-label {
+        font-size: 13px !important;
+        font-weight: 500 !important;
+    }
+    
+    .quick-collection-dialog .form-control {
+        font-size: 14px !important;
+        padding: 8px 12px !important;
+    }
+}
+
+/* Highlight customer outstanding in collection dialog */
+.quick-collection-dialog [data-fieldname="customer_outstanding"] {
+    background-color: #f8f9fa !important;
+    border-left: 3px solid #17a2b8 !important;
+    padding-left: 10px !important;
+}
+
+/* Style the collection amount field */
+.quick-collection-dialog [data-fieldname="collection_amount"] .form-control {
+    border-color: #17a2b8 !important;
+    font-weight: bold !important;
+}
