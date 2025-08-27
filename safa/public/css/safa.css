@@ -131,3 +131,93 @@
     border-color: #17a2b8 !important;
     font-weight: bold !important;
 }
+
+/* Mobile-friendly item removal buttons - Android Chrome compatibility */
+.grid-remove-rows, .btn-remove, [data-action="remove_row"] {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    touch-action: manipulation !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -webkit-touch-callout: none !important;
+    -webkit-tap-highlight-color: rgba(0,0,0,0.1) !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 4px !important;
+    transition: background-color 0.2s ease !important;
+}
+
+/* Hover and active states for better feedback */
+.grid-remove-rows:hover, .btn-remove:hover, [data-action="remove_row"]:hover {
+    background-color: rgba(220, 53, 69, 0.1) !important;
+}
+
+.grid-remove-rows:active, .btn-remove:active, [data-action="remove_row"]:active {
+    background-color: rgba(220, 53, 69, 0.2) !important;
+    transform: scale(0.95) !important;
+}
+
+/* Specific styling for items table remove buttons */
+[data-fieldname="items"] .grid-remove-rows,
+[data-fieldname="items"] .btn-remove,
+[data-fieldname="items"] [data-action="remove_row"] {
+    color: #dc3545 !important;
+    font-size: 16px !important;
+    font-weight: bold !important;
+    padding: 8px !important;
+    margin: 2px !important;
+}
+
+/* Android Chrome specific fixes */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+    .grid-remove-rows, .btn-remove, [data-action="remove_row"] {
+        -webkit-appearance: none !important;
+        -webkit-user-select: none !important;
+        -webkit-touch-callout: none !important;
+        -webkit-tap-highlight-color: transparent !important;
+    }
+}
+
+/* Mobile responsive adjustments for item table */
+@media (max-width: 768px) {
+    [data-fieldname="items"] .grid-remove-rows,
+    [data-fieldname="items"] .btn-remove,
+    [data-fieldname="items"] [data-action="remove_row"] {
+        min-width: 48px !important;
+        min-height: 48px !important;
+        font-size: 18px !important;
+        margin: 4px !important;
+    }
+    
+    /* Increase touch target for table rows on mobile */
+    [data-fieldname="items"] .grid-row {
+        min-height: 60px !important;
+    }
+    
+    /* Better spacing for mobile */
+    [data-fieldname="items"] .grid-body .rows {
+        padding: 5px !important;
+    }
+}
+
+/* Fix for Frappe table controls */
+.grid-footer .grid-add-row,
+.grid-footer .grid-remove-rows {
+    touch-action: manipulation !important;
+    min-height: 40px !important;
+    padding: 8px 16px !important;
+}
+
+/* Ensure remove button is always visible and clickable */
+[data-fieldname="items"] .grid-row .grid-row-check {
+    min-width: 50px !important;
+    text-align: center !important;
+}
+
+[data-fieldname="items"] .grid-row .grid-row-check input[type="checkbox"] {
+    min-width: 20px !important;
+    min-height: 20px !important;
+    margin: 5px !important;
+}
