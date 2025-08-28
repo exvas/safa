@@ -11,19 +11,19 @@ app_email = "your.email@example.com"
 app_license = "MIT"
 
 
-# # Document Events
-# doc_events = {
-#     "Sales Invoice": {
-#         "on_submit": "safa.sales_invoice.on_submit_sales_invoice",
-#     }
-# }
+# Document Events
+doc_events = {
+    "Sales Invoice": {
+        "on_submit": "safa.sales_invoice.on_submit_sales_invoice",
+    }
+}
 
-# # App include js (if not already present)
-# app_include_js = [
-#     "/assets/safa/js/sales_invoice.js"
-# ]
+# App include js (if not already present)
+app_include_js = [
+    "/assets/safa/js/sales_invoice.js"
+]
 
-# # App include css
-# app_include_css = [
-#     "/assets/safa/css/safa.css"
-# ]
+# App include css
+app_include_css = [
+    "/assets/safa/css/safa.css"
+]
