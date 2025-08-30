@@ -37,12 +37,12 @@ frappe.ui.form.on('Sales Invoice', {
         frm.toggle_display("taxes", false);
         
         // Only run these functions if the document is not submitted (not read-only)
-        if (frm.doc.docstatus === 0) {
-            // Make custom_payment_type field mandatory
-            frm.toggle_reqd('custom_payment_type', true);
-            set_pos_based_on_payment_type(frm);
-            manage_sales_team(frm);
-        }
+        // if (frm.doc.docstatus === 0) {
+        //     // Make custom_payment_type field mandatory
+        //     frm.toggle_reqd('custom_payment_type', true);
+        //     set_pos_based_on_payment_type(frm);
+        //     manage_sales_team(frm);
+        // }
         
         // Debug logging for payment button (reduced)
         console.log("Form refreshed - Doc Status:", frm.doc.docstatus, "Outstanding:", frm.doc.outstanding_amount, "Status:", frm.doc.status);
