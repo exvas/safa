@@ -36,10 +36,10 @@ frappe.ui.form.on('Sales Invoice', {
         frm.toggle_display("taxes_and_charges", false);
         frm.toggle_display("taxes", false);
         
-        Only run these functions if the document is not submitted (not read-only)
+        // Only run these functions if the document is not submitted (not read-only)
         if (frm.doc.docstatus === 0) {
-            // Make custom_payment_type field mandatory
-            frm.toggle_reqd('custom_payment_type', true);
+            // Remove mandatory requirement for custom_payment_type field
+            frm.toggle_reqd('custom_payment_type', false);
             set_pos_based_on_payment_type(frm);
             manage_sales_team(frm);
         }
