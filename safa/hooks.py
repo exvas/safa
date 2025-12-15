@@ -1,12 +1,12 @@
-# safaqatar/hooks.py
+# safa/hooks.py
 # Updated to include custom invoice fields handlers
 
 from . import __version__ as app_version
 
-app_name = "safaqatar"
-app_title = "Safaqatar"
+app_name = "safa"
+app_title = "Safa"
 app_publisher = "Your Company"
-app_description = "Custom app for Safaqatar"
+app_description = "Custom app for Safa"
 app_email = "your.email@example.com"
 app_license = "MIT"
 
